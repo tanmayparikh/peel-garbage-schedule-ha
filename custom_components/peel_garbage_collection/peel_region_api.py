@@ -17,7 +17,7 @@ if TYPE_CHECKING:
 _API_ENDPOINT = "https://api.recollect.net/api"
 _DEFAULT_TIMEOUT = 10
 _LOGGER = logging.getLogger(__name__)
-_DATE_TIME_FORMAT = "%Y-%m-$d"
+_DATE_TIME_FORMAT = "%Y-%m-%d"
 
 
 class PeelRegionAPI:
