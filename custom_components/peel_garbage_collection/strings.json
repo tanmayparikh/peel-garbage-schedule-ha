@@ -1,0 +1,21 @@
+{
+    "config": {
+        "step": {
+            "user": {
+                "title": "Set up Peel Garbage Collection Schedule",
+                "description": "Enter your home address in Peel Region to retrieve your garbage collection schedule.",
+                "data": {
+                    "address": "Street Address"
+                }
+            }
+        },
+        "error": {
+            "invalid_address": "The address provided is invalid or cannot be found in Peel Region.",
+            "empty_address": "Address cannot be empty.",
+            "unknown": "An unexpected error occurred."
+        },
+        "abort": {
+            "already_configured": "This address is already configured."
+        }
+    }
+}

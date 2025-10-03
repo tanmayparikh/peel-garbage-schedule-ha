@@ -1,5 +1,5 @@
 {
-    "name": "ludeeus/integration_blueprint",
+    "name": "Home Assistant Development Container",
     "image": "mcr.microsoft.com/devcontainers/python:3.13",
     "postCreateCommand": "scripts/setup",
     "forwardPorts": [
@@ -28,10 +28,30 @@
                 "editor.formatOnType": false,
                 "files.trimTrailingWhitespace": true,
                 "python.analysis.typeCheckingMode": "basic",
+                "python.analysis.useLibraryCodeForTypes": true,
                 "python.analysis.autoImportCompletions": true,
+                "python.analysis.diagnosticMode": "workspace",
+                "python.languageServer": "Pylance",
+                "python.linting.enabled": true,
                 "python.defaultInterpreterPath": "/usr/local/bin/python",
+                "python.analysis.extraPaths": [
+                    "/usr/local/lib/python3.13/site-packages",
+                    "/workspaces/core"
+                ],
+                "python.analysis.exclude": [
+                    "**/node_modules",
+                    "**/__pycache__"
+                ],
                 "[python]": {
-                    "editor.defaultFormatter": "charliermarsh.ruff"
+                    "editor.defaultFormatter": "charliermarsh.ruff",
+                    "editor.formatOnSave": true,
+                    "editor.codeActionsOnSave": {
+                        "source.fixAll": "explicit",
+                        "source.organizeImports": "explicit"
+                    }
+                },
+                "files.associations": {
+                    "*.yaml": "home-assistant"
                 }
             }
         }

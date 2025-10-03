@@ -1,0 +1,13 @@
+{
+    "domain": "peel_garbage_collection",
+    "name": "Peel Garbage Collection",
+    "codeowners": [
+        "@tanmayparikh"
+    ],
+    "config_flow": true,
+    "dependencies": [],
+    "documentation": "https://github.com/tanmayparikh/peel-garbage-schedule-ha",
+    "iot_class": "cloud_polling",
+    "requirements": [],
+    "version": "0.1.0"
+}
