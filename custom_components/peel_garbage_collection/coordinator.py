@@ -5,7 +5,7 @@ from datetime import timedelta
 
 from homeassistant.config_entries import ConfigEntry
 from homeassistant.core import HomeAssistant
-from homeassistant.helpers.device_registry import DeviceInfo
+from homeassistant.helpers.device_registry import DeviceEntryType, DeviceInfo
 from homeassistant.helpers.update_coordinator import DataUpdateCoordinator, UpdateFailed
 
 from .const import DOMAIN
@@ -40,7 +40,8 @@ class PeelGarbageDataUpdateCoordinator(DataUpdateCoordinator):
             name=addr,
             manufacturer="Peel Region",
             model="Garbage Collection Schedule",
-        )
+            entry_type=DeviceEntryType.SERVICE,
+        )  # type: ignore
 
     async def _async_update_data(self):
         """Fetch data from Peel Region API."""

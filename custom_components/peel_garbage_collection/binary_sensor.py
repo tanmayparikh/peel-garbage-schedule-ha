@@ -44,7 +44,7 @@ BINARY_SENSOR_TYPES: tuple[BinarySensorEntityDescription, ...] = (
     BinarySensorEntityDescription(
         key="next_collection_yardwaste",
         name="Next Collection Yard Waste",
-        icon="mdi:leaf-maple",
+        icon="mdi:grass",
     ),
 )
 
