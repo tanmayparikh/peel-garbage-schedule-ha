@@ -138,6 +138,8 @@ class CollectionType(StrEnum):
     Recycling = "Recycling"
     YardWaste = "Yard Waste"
     Organics = "Organics"
+    GarbageExemption = "Garbage Exemption"
+    Battery = "Battery"
 
 
 class CollectionScheduleCalendarEntry:
@@ -166,5 +168,9 @@ class CollectionScheduleCalendarEntry:
                 types.append(CollectionType.YardWaste)
             elif name == "organics":
                 types.append(CollectionType.Organics)
+            elif name == "garbage_exemption_day":
+                types.append(CollectionType.GarbageExemption)
+            elif name == "battery_pickup_day":
+                types.append(CollectionType.Battery)
 
         return cls(date, types)

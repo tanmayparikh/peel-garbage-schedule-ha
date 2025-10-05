@@ -46,6 +46,16 @@ BINARY_SENSOR_TYPES: tuple[BinarySensorEntityDescription, ...] = (
         name="Next Collection Yard Waste",
         icon="mdi:grass",
     ),
+    BinarySensorEntityDescription(
+        key="next_collection_garbage_exemption",
+        name="Next Collection Garbage Exemption Day",
+        icon="mdi:delete-restore",
+    ),
+    BinarySensorEntityDescription(
+        key="next_collection_battery_collection",
+        name="Next Collection Battery Collection Day",
+        icon="mdi:battery-60",
+    ),
 )
 
 
@@ -105,6 +115,12 @@ class PeelGarbageBinarySensor(BinarySensorEntity):
 
         if self.entity_description.key == "next_collection_yardwaste":
             return CollectionType.YardWaste in calendar_entry.types
+
+        if self.entity_description.key == "next_collection_garbage_exemption":
+            return CollectionType.GarbageExemption in calendar_entry.types
+
+        if self.entity_description.key == "next_collection_battery_collection":
+            return CollectionType.Battery in calendar_entry.types
 
         return None
 
