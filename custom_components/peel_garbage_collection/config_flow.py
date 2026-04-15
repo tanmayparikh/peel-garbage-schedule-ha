@@ -59,8 +59,8 @@ class AddressConfigFlow(config_entries.ConfigFlow, domain=DOMAIN):
                 result = await validate_input(self.hass, info)
             except InvalidAddressError:
                 return self.async_abort(reason="invalid_address")
-            except Exception:  # pylint: disable=broad-except  # noqa: BLE001
-                return self.async_abort(reason="unknown")
+            except Exception as err:  # pylint: disable=broad-except  # noqa: BLE001
+                return self.async_abort(reason=str(err))
             else:
                 return self.async_create_entry(
                     title="Peel Garable Collection Service",
