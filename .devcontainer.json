@@ -1,6 +1,6 @@
 {
-    "name": "Home Assistant Development Container",
-    "image": "mcr.microsoft.com/devcontainers/python:3.14",
+    "name": "ludeeus/integration_blueprint",
+    "image": "mcr.microsoft.com/devcontainers/base:debian",
     "postCreateCommand": "scripts/setup",
     "forwardPorts": [
         8123
@@ -18,7 +18,8 @@
                 "github.vscode-pull-request-github",
                 "ms-python.python",
                 "ms-python.vscode-pylance",
-                "ryanluker.vscode-coverage-gutters"
+                "ryanluker.vscode-coverage-gutters",
+                "anthropic.claude-code"
             ],
             "settings": {
                 "files.eol": "\n",
@@ -28,35 +29,20 @@
                 "editor.formatOnType": false,
                 "files.trimTrailingWhitespace": true,
                 "python.analysis.typeCheckingMode": "basic",
-                "python.analysis.useLibraryCodeForTypes": true,
                 "python.analysis.autoImportCompletions": true,
-                "python.analysis.diagnosticMode": "workspace",
-                "python.languageServer": "Pylance",
-                "python.linting.enabled": true,
-                "python.defaultInterpreterPath": "/usr/local/bin/python",
-                "python.analysis.extraPaths": [
-                    "/usr/local/lib/python3.13/site-packages",
-                    "/workspaces/core"
-                ],
-                "python.analysis.exclude": [
-                    "**/node_modules",
-                    "**/__pycache__"
-                ],
                 "[python]": {
-                    "editor.defaultFormatter": "charliermarsh.ruff",
-                    "editor.formatOnSave": true,
-                    "editor.codeActionsOnSave": {
-                        "source.fixAll": "explicit",
-                        "source.organizeImports": "explicit"
-                    }
-                },
-                "files.associations": {
-                    "*.yaml": "home-assistant"
+                    "editor.defaultFormatter": "charliermarsh.ruff"
                 }
             }
         }
     },
     "remoteUser": "vscode",
     "features": {
+        "ghcr.io/devcontainers/features/python:1": {
+            "version": "3.14"
+        },
+        "ghcr.io/devcontainers-extra/features/apt-packages:1": {
+            "packages": "ffmpeg,libturbojpeg0,libpcap-dev"
+        }
     }
 }

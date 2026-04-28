@@ -1,0 +1,15 @@
+{
+    "python.defaultInterpreterPath": "/usr/local/bin/python3",
+    "python.analysis.extraPaths": [
+        "/usr/local/lib/python3.14/site-packages",
+        "/home/vscode/.local/lib/python3.14/site-packages"
+    ],
+    "python.analysis.include": [
+        "**"
+    ],
+    "python.analysis.exclude": [
+        "**/node_modules",
+        "**/__pycache__",
+        "**/.*"
+    ]
+}
