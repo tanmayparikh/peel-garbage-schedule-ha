@@ -43,6 +43,7 @@ class _BaseAPI:
     """Shared HTTP client base for collection APIs."""
 
     _API_ENDPOINT: str = ""
+    _json_content_type: str | None = "application/json"
 
     def __init__(
         self,
@@ -67,7 +68,7 @@ class _BaseAPI:
                     url, params=params, timeout=self._timeout
                 ) as resp:
                     resp.raise_for_status()
-                    return await resp.json()
+                    return await resp.json(content_type=self._json_content_type)
             except (TimeoutError, ClientResponseError, ClientError) as err:
                 _LOGGER.debug("GET %s failed (attempt %s): %s", url, attempt + 1, err)
                 if attempt < retries:
@@ -168,3 +169,110 @@ class PeelRegionAPI(_BaseAPI):
                 types.append(CollectionType.Battery)
 
         return CollectionScheduleCalendarEntry(date, types)
+
+
+_CIRCULAR_MATERIALS_PROJECTS = (
+    "CIRCMAT:AIRDRIE,ALIX,BASHAW,BIRCHCLIFF,BLACKFALDS,BONACCORD,BOWISLAND,CALMAR,"
+    "CARSTAIRS,CHAUVIN,CLIVE,CLYDE,CORONATION,DELBURNE,ELNORA,FAIRVIEW,"
+    "FORTSASKATCHEWAN,GRANDPRAIRIE,GREENVIEWNO16,LEGAL,MAYERTHORPE,MEDICINEHAT,"
+    "MORINVILLE,MUNDARE,OLDS,PARKLANDCOUNTY,PEACERIVER,PONOKA,SEXSMITH,TROCHU,"
+    "VERMILION,WAINWRIGHT,WESTLOCK;"
+    "CIRCMATNB:BAYSIDE,BEAVERHARBOUR,BLACKSHARBOUR,BONNYRIVER,CAMPOBELLO,CHAMCOOK,"
+    "DEERISLAND,DENNISWESTON,DUFFERIN,DUMBARTON,FUNDYBAY,GRANDMANAN,LEPREAU,MCADAM,"
+    "MUSQUASH,PENNFIELD,SAINTANDREWS,STCROIX,STDAVID,STGEORGE,STJAMES,STPATRICK,"
+    "STSTEPHEN,STSTEPHENLSD,WESTERNCHARLOTTE;"
+    "CIRCMATNS:ANTIGONISH,MFD,NOVASCOTIA,REGIONQUEENS,SCHOOLS,WAVESENDRVCG,YARMOUTH,"
+    "YARMOUTHMUNI;"
+    "CIRCMATONT:AJAX,ALGONQUINHIGHLANDS,AMARANTH,AMHERSTBURG,ARMOUR,ASPHODELNORWOOD,"
+    "BARRIE,BRAMPTON,BRANT,BRIGHTON,BROCK,BROCKVILLE,CALEDON,CAMBRIDGE,CARLETONPLACE,"
+    "CARLING,CAVANMONAGHAN,CHATHAMKENT,CLARENCEROCKLAND,CLARINGTON,COBOURG,"
+    "DOURODUMMER,DYSARTETAL,EASTGARAFRAXA,ERIN,ESSEX,FORTERIE,GEORGIANBAY,"
+    "GRANDVALLEY,GRIMSBY,GUELPHERAMOSA,HALDIMAND,HAVELOCKBELMONTMETHUEN,HUNTSVILLE,"
+    "KINGSVILLE,KITCHENER,LINCOLN,LONDON,LUCANBIDDULPH,MALAHIDE,MAPLETON,MARKHAM,"
+    "MELANCTHON,MINDENHILLS,MINTO,MISSISSAUGA,MISSISSIPPIMILLS,MONO,MULMUR,"
+    "MUSKOKALAKES,NEWBURY,NIAGARAFALLS,NIAGARAONTHELAKE,NORFOLK,NORTHDUMFRIES,"
+    "NORTHKAWARTHA,OTONABEESOUTHMONAGHAN,OTTAWA,PELHAM,PETERBOROUGH,PICKERING,"
+    "PORTCOLBORNE,PORTHOPE,PUSLINCH,SARNIA,SCUGOG,SEGUIN,SELWYN,SHELBURNE,"
+    "SOUTHGLENGARRY,SOUTHWOLD,STCATHARINES,TECUMSEH,TERACEBAY,THOROLD,TIMMINS,"
+    "TORONTO,TRENTLAKES,UXBRIDGE,VAUGHAN,WAINFLEET,WATERLOO,WELLAND,WELLESLEY,"
+    "WELLINGTONNORTH,WESTLINCOLN,WILMOT,WOOLWICH;"
+    "CIRCMATYT:CARCROSS,CARMACKS,CHAMPAGNE,DAWSONCITY,DEEPCREEK,DESTRUCTIONBAY,FARO,"
+    "HAINESJUNCTION,MARSHLAKE,MAYO,MOUNTLORNE,PELLYCROSSING,ROSSRIVER,TAGISH,TESLIN,"
+    "WATSONLAKE,WHITEHORSE"
+)
+
+
+class CircularMaterialsAPI(_BaseAPI):
+    """API client for the Circular Materials recycling schedule service."""
+
+    _API_ENDPOINT = "https://ca-web.apigw.recyclecoach.com"
+    _json_content_type = None  # API returns text/html despite sending JSON
+
+    async def search_address(self, address: str) -> dict | None:
+        """Search for an address and return district, project, and zone IDs."""
+        endpoint = "/zone-setup/address/multi"
+        params = {"term": address, "projects": _CIRCULAR_MATERIALS_PROJECTS}
+
+        data = await self._get(endpoint, params=params)
+        if not data or not data.get("success"):
+            _LOGGER.debug("No suggestions returned for '%s'", address)
+            return None
+
+        results = data.get("results", [])
+        if not results:
+            _LOGGER.debug("Empty results for '%s'", address)
+            return None
+
+        result = results[0]
+        zones: dict = result.get("zones", {})
+        zone_id = next(iter(zones.values()), None)
+        if not zone_id:
+            _LOGGER.warning("No zone found in address response for '%s'", address)
+            return None
+
+        return {
+            "district_id": result["district_id"],
+            "project_id": result["project_id"],
+            "zone_id": zone_id,
+        }
+
+    async def get_collection_schedule(
+        self, project_id: str, district_id: str, zone_id: str, num_days: int = 30
+    ) -> list[CollectionScheduleCalendarEntry] | None:
+        """Retrieve the recycling schedule for the next num_days."""
+        start_date = datetime.now(tz=UTC).date()
+        end_date = start_date + timedelta(days=num_days)
+
+        endpoint = "/zone-setup/zone/schedules"
+        params = {
+            "project_id": project_id,
+            "district_id": district_id,
+            "zone_id": f"zone-{zone_id}",
+        }
+
+        data = await self._get(endpoint, params=params)
+        if not data:
+            _LOGGER.error("Unable to retrieve recycling schedule")
+            return None
+
+        entries: list[CollectionScheduleCalendarEntry] = []
+        for year_data in data.get("DATA", []):
+            for month_data in year_data.get("months", []):
+                for event in month_data.get("events", []):
+                    collections: list[dict] = event.get("collections", [])
+                    if any(c.get("status") == "is_none" for c in collections):
+                        continue
+
+                    event_date = datetime.strptime(  # noqa: DTZ007
+                        event["date"], _DATE_TIME_FORMAT
+                    ).date()
+                    if not (start_date <= event_date < end_date):
+                        continue
+
+                    entries.append(
+                        CollectionScheduleCalendarEntry(
+                            event["date"], [CollectionType.Recycling]
+                        )
+                    )
+
+        return entries

@@ -2,7 +2,10 @@
 
 from __future__ import annotations
 
+import logging
 from typing import TYPE_CHECKING
+
+_LOGGER = logging.getLogger(__name__)
 
 from homeassistant.const import Platform
 
@@ -13,6 +16,8 @@ if TYPE_CHECKING:
 
 from .const import DOMAIN
 from .coordinator import PeelGarbageDataUpdateCoordinator
+
+CURRENT_VERSION = 2
 
 PLATFORMS: list[Platform] = [Platform.SENSOR, Platform.BINARY_SENSOR]
 
@@ -40,3 +45,15 @@ async def async_unload_entry(hass: HomeAssistant, entry: ConfigEntry) -> bool:
         hass.data[DOMAIN].pop(entry.entry_id)
 
     return unload_ok
+
+
+async def async_migrate_entry(hass: HomeAssistant, entry: ConfigEntry) -> bool:
+    """Migrate old config entries — VERSION 1 requires reconfiguration."""
+    _LOGGER.warning(
+        "Config entry %s is version %s, current version is %s. "
+        "Please remove and re-add the integration to pick up the new recycling source.",
+        entry.entry_id,
+        entry.version,
+        CURRENT_VERSION,
+    )
+    return False

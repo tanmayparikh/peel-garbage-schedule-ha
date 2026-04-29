@@ -2,7 +2,7 @@
 
 from __future__ import annotations
 
-import logging
+import asyncio
 from typing import TYPE_CHECKING, Any
 
 import voluptuous as vol
@@ -13,11 +13,16 @@ if TYPE_CHECKING:
     from homeassistant.config_entries import ConfigFlowResult
     from homeassistant.core import HomeAssistant
 
-from .const import CONF_ADDRESS, DOMAIN
-from .api import PeelRegionAPI
-
-_LOGGER = logging.getLogger(__name__)
-
+from .api import CircularMaterialsAPI, PeelRegionAPI
+from .const import (
+    CONF_ADDRESS,
+    CONF_CIRCULAR_DISTRICT_ID,
+    CONF_CIRCULAR_PROJECT_ID,
+    CONF_CIRCULAR_ZONE_ID,
+    CONF_PEEL_PLACE_ID,
+    CONF_PEEL_TITLE,
+    DOMAIN,
+)
 
 async def validate_input(hass: HomeAssistant, data: dict[str, Any]) -> dict[str, Any]:
     """Validate the user input allows us to connect."""
@@ -28,22 +33,39 @@ async def validate_input(hass: HomeAssistant, data: dict[str, Any]) -> dict[str,
             translation_key="error.empty_address",
         )
 
-    api = PeelRegionAPI(hass)
-    result = await api.search_address(address)
-    if not result:
+    peel_api = PeelRegionAPI(hass)
+    circular_api = CircularMaterialsAPI(hass)
+
+    peel_result, circular_result = await asyncio.gather(
+        peel_api.search_address(address),
+        circular_api.search_address(address),
+    )
+
+    if not peel_result:
         raise InvalidAddressError(
             translation_domain=DOMAIN,
             translation_key="error.invalid_address",
         )
 
-    # Return info that you want to store in the config entry.
-    return {"title": result["name"], "place_id": result["place_id"]}
+    if not circular_result:
+        raise InvalidAddressError(
+            translation_domain=DOMAIN,
+            translation_key="error.invalid_address",
+        )
+
+    return {
+        CONF_PEEL_TITLE: peel_result["name"],
+        CONF_PEEL_PLACE_ID: peel_result["place_id"],
+        CONF_CIRCULAR_DISTRICT_ID: circular_result["district_id"],
+        CONF_CIRCULAR_PROJECT_ID: circular_result["project_id"],
+        CONF_CIRCULAR_ZONE_ID: circular_result["zone_id"],
+    }
 
 
 class AddressConfigFlow(config_entries.ConfigFlow, domain=DOMAIN):
     """Handle a config flow for Peel Garbage Collection."""
 
-    VERSION = 1
+    VERSION = 2
 
     async def async_step_user(
         self, info: dict[str, Any] | None = None
@@ -63,7 +85,7 @@ class AddressConfigFlow(config_entries.ConfigFlow, domain=DOMAIN):
                 return self.async_abort(reason=str(err))
             else:
                 return self.async_create_entry(
-                    title="Peel Garable Collection Service",
+                    title="Peel Garbage Collection Service",
                     data=result,
                 )
 
