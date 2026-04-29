@@ -10,8 +10,7 @@ from homeassistant.components.binary_sensor import (
     BinarySensorEntityDescription,
 )
 
-from custom_components.peel_garbage_collection.peel_region_api import CollectionType
-
+from .api import CollectionType
 from .const import DOMAIN
 
 if TYPE_CHECKING:
@@ -20,8 +19,8 @@ if TYPE_CHECKING:
     from homeassistant.helpers.entity_platform import AddEntitiesCallback
     from homeassistant.helpers.typing import StateType
 
+    from .api import CollectionScheduleCalendarEntry
     from .coordinator import PeelGarbageDataUpdateCoordinator
-    from .peel_region_api import CollectionScheduleCalendarEntry
 
 _LOGGER = logging.getLogger(__name__)
 

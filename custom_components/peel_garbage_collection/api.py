@@ -1,4 +1,4 @@
-"""API for Peel Region Garbage Collection Service."""
+"""API clients for Peel Garbage Collection integration."""
 
 from __future__ import annotations
 
@@ -14,31 +14,50 @@ from homeassistant.helpers.aiohttp_client import async_get_clientsession
 if TYPE_CHECKING:
     from homeassistant.core import HomeAssistant
 
-_API_ENDPOINT = "https://api.recollect.net/api"
 _DEFAULT_TIMEOUT = 10
-_LOGGER = logging.getLogger(__name__)
 _DATE_TIME_FORMAT = "%Y-%m-%d"
+_LOGGER = logging.getLogger(__name__)
 
 
-class PeelRegionAPI:
-    """Class to interact with the Peel Region Garbage Collection API."""
+class CollectionType(StrEnum):
+    """Enum of all pickup types."""
+
+    Garbage = "Garbage"
+    Recycling = "Recycling"
+    YardWaste = "Yard Waste"
+    Organics = "Organics"
+    GarbageExemption = "Garbage Exemption"
+    Battery = "Battery"
+
+
+class CollectionScheduleCalendarEntry:
+    """Class representing a single calendar entry for garbage collection."""
+
+    def __init__(self, date: str, types: list[CollectionType]) -> None:
+        """Initialize the calendar entry."""
+        self.date = datetime.strptime(date, _DATE_TIME_FORMAT)  # noqa: DTZ007
+        self.types = types
+
+
+class _BaseAPI:
+    """Shared HTTP client base for collection APIs."""
+
+    _API_ENDPOINT: str = ""
 
     def __init__(
         self,
         hass: HomeAssistant,
         *,
-        base_url: str = _API_ENDPOINT,
         timeout: int = _DEFAULT_TIMEOUT,
     ) -> None:
         """Initialize the API client."""
         self.hass = hass
-        self._base_url = base_url.rstrip("/")
+        self._base_url = self._API_ENDPOINT.rstrip("/")
         self._timeout = ClientTimeout(total=timeout)
         self._session: ClientSession = async_get_clientsession(hass)
-        self._owns_session = False
 
     async def _get(self, endpoint: str, params: dict | None = None) -> Any:
-        """Perform a generic GET request for the API."""
+        """Perform a GET request with retry logic."""
         url = f"{self._base_url}{endpoint}"
         retries = 2
         backoff = 0.5
@@ -60,6 +79,23 @@ class PeelRegionAPI:
                 raise
         return None
 
+    async def close(self) -> None:
+        """No-op: session is managed by Home Assistant."""
+
+    async def __aenter__(self) -> Any:
+        """Async enter context manager."""
+        return self
+
+    async def __aexit__(self, exc_type, exc_val, exc_tb) -> Any:
+        """Async exit context manager."""
+        await self.close()
+
+
+class PeelRegionAPI(_BaseAPI):
+    """API client for the Peel Region garbage collection service (ReCollect)."""
+
+    _API_ENDPOINT = "https://api.recollect.net/api"
+
     async def search_address(self, address: str) -> dict | None:
         """Search for an address and return its details (first match)."""
         endpoint = "/areas/PeelRegionON/services/1063/address-suggest"
@@ -80,7 +116,7 @@ class PeelRegionAPI:
     async def get_collection_schedule(
         self, place_id: str, num_days: int = 30
     ) -> list[CollectionScheduleCalendarEntry] | None:
-        """Retreive the collection schedule starting today until num_days."""
+        """Retrieve the collection schedule starting today until num_days."""
         start_date = datetime.now(tz=UTC)
         end_date = start_date + timedelta(days=num_days)
 
@@ -93,7 +129,7 @@ class PeelRegionAPI:
 
         data = await self._get(endpoint, params=params)
         if not data:
-            _LOGGER.error("Unable to retreive collection schedule")
+            _LOGGER.error("Unable to retrieve collection schedule")
             return None
 
         if not isinstance(data, dict):
@@ -107,62 +143,20 @@ class PeelRegionAPI:
 
         calendar_entries: list[CollectionScheduleCalendarEntry] = []
         for event in events:
-            # Ignore holidays
             if "type" in event and event["type"] == "holiday":
                 continue
-
-            calendar_entries.append(
-                CollectionScheduleCalendarEntry.from_event_response(event)
-            )
+            calendar_entries.append(self._parse_event(event))
 
         return calendar_entries
 
-    async def close(self) -> None:
-        """Close the API client session only if we created it."""
-        if self._owns_session and self._session:
-            await self._session.close()
-
-    async def __aenter__(self) -> Any:
-        """Async enter context manager."""
-        return self
-
-    async def __aexit__(self, exc_type, exc_val, exc_tb) -> Any:
-        """Async exit context manager."""
-        await self.close()
-
-
-class CollectionType(StrEnum):
-    """Enum of all pickup types."""
-
-    Garbage = "Garbage"
-    Recycling = "Recycling"
-    YardWaste = "Yard Waste"
-    Organics = "Organics"
-    GarbageExemption = "Garbage Exemption"
-    Battery = "Battery"
-
-
-class CollectionScheduleCalendarEntry:
-    """Class representing a single calendar entry for garbage collection."""
-
-    def __init__(self, date: str, types: list[CollectionType]) -> None:
-        """Initialize the calendar entry."""
-        # Date format: 2025-10-08
-        self.date = datetime.strptime(date, _DATE_TIME_FORMAT)  # noqa: DTZ007
-        self.types = types
-
-    @classmethod
-    def from_event_response(cls, event: dict) -> Any:
-        """Build calendar entry from json response."""
+    def _parse_event(self, event: dict) -> CollectionScheduleCalendarEntry:
+        """Build a calendar entry from a ReCollect event response."""
         date = event["day"]
         types: list[CollectionType] = []
 
-        flags: list[dict] = event["flags"]
-        for flag in flags:
+        for flag in event.get("flags", []):
             name = flag["name"]
-            if name == "recycling":
-                types.append(CollectionType.Recycling)
-            elif name == "garbage":
+            if name == "garbage":
                 types.append(CollectionType.Garbage)
             elif name == "yardwaste":
                 types.append(CollectionType.YardWaste)
@@ -173,4 +167,4 @@ class CollectionScheduleCalendarEntry:
             elif name == "battery_pickup_day":
                 types.append(CollectionType.Battery)
 
-        return cls(date, types)
+        return CollectionScheduleCalendarEntry(date, types)

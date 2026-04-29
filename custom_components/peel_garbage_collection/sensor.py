@@ -16,7 +16,7 @@ if TYPE_CHECKING:
     from homeassistant.helpers.typing import StateType
 
     from .coordinator import PeelGarbageDataUpdateCoordinator
-    from .peel_region_api import CollectionScheduleCalendarEntry
+    from .api import CollectionScheduleCalendarEntry
 
 _LOGGER = logging.getLogger(__name__)
 

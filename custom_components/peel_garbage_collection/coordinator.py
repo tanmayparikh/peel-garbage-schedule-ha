@@ -9,7 +9,7 @@ from homeassistant.helpers.device_registry import DeviceEntryType, DeviceInfo
 from homeassistant.helpers.update_coordinator import DataUpdateCoordinator, UpdateFailed
 
 from .const import DOMAIN
-from .peel_region_api import PeelRegionAPI
+from .api import PeelRegionAPI
 
 _LOGGER = logging.getLogger(__name__)
 

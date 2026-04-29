@@ -14,7 +14,7 @@ if TYPE_CHECKING:
     from homeassistant.core import HomeAssistant
 
 from .const import CONF_ADDRESS, DOMAIN
-from .peel_region_api import PeelRegionAPI
+from .api import PeelRegionAPI
 
 _LOGGER = logging.getLogger(__name__)
 
