@@ -1,5 +1,5 @@
 {
-    "python.defaultInterpreterPath": "/usr/local/bin/python3",
+    "python.defaultInterpreterPath": "/usr/local/python/current/bin/python3",
     "python.analysis.extraPaths": [
         "/usr/local/lib/python3.14/site-packages",
         "/home/vscode/.local/lib/python3.14/site-packages"
